@@ -205,3 +205,7 @@ factusync document emit "$DOCUMENT_ID" --yes
 factusync documents get "$DOCUMENT_ID"            # until AUTHORIZED or REJECTED
 factusync ride "$DOCUMENT_ID" --out invoice.pdf --xml invoice.xml
 ```
+
+## License
+
+MIT. See [LICENSE](LICENSE).
