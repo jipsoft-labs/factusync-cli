@@ -1,5 +1,9 @@
 # factusync — FactuSync CLI for agents and scripts
 
+<a href="https://github.com/Gentleman-Programming/gentle-ai">
+  <img width="220" src="https://raw.githubusercontent.com/Gentleman-Programming/gentle-ai/main/docs/assets/brand/built-with-gentle-ai.png" alt="Built with Gentle-AI" />
+</a>
+
 `factusync` issues and reads Ecuadorian SRI electronic documents in FactuSync from a shell. It is a
 thin client of the FactuSync MCP endpoint: every command calls one MCP tool, with the same input,
 the same API-key scopes, the same error texts and the same idempotency as the MCP tools.
