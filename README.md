@@ -10,7 +10,7 @@ scripts. Every command prints JSON.
 ## Run it
 
 ```bash
-# Once published to npm:
+# From npm (https://www.npmjs.com/package/@jipsoft/factusync-cli):
 npx @jipsoft/factusync-cli context
 npm install -g @jipsoft/factusync-cli && factusync context
 
