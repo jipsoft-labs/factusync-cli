@@ -1,6 +1,6 @@
 {
   "name": "@jipsoft/factusync-cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "FactuSync command line for AI agents (Pi) and shell scripts: Ecuadorian SRI e-invoicing through the FactuSync MCP endpoint",
   "license": "MIT",
   "keywords": [
@@ -14,11 +14,10 @@
   "homepage": "https://jipsoft.com/factusync/mcp",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jipsoft-labs/jipsoft-global.git",
-    "directory": "packages/factusync-cli"
+    "url": "git+https://github.com/jipsoft-labs/factusync-cli.git"
   },
   "bugs": {
-    "url": "https://github.com/jipsoft-labs/jipsoft-global/issues"
+    "url": "https://github.com/jipsoft-labs/factusync-cli/issues"
   },
   "type": "module",
   "bin": {
@@ -37,9 +36,9 @@
   },
   "scripts": {
     "build": "rm -rf dist && tsc --project tsconfig.build.json && chmod +x dist/cli.js",
-    "test": "pnpm run build && pnpm exec vitest run",
+    "test": "npm run build && vitest run",
     "typecheck": "tsc --project tsconfig.json --noEmit",
-    "prepublishOnly": "pnpm run test"
+    "prepublishOnly": "npm test"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "1.30.1",

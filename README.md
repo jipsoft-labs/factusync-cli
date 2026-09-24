@@ -206,6 +206,18 @@ factusync documents get "$DOCUMENT_ID"            # until AUTHORIZED or REJECTED
 factusync ride "$DOCUMENT_ID" --out invoice.pdf --xml invoice.xml
 ```
 
+## Source and issues
+
+This package is developed inside JipSoft's private monorepo, next to the FactuSync server it talks
+to, so a shared contract test (`mcp-tool-contract.json`) keeps the commands and the server's tools
+from drifting apart. [github.com/jipsoft-labs/factusync-cli](https://github.com/jipsoft-labs/factusync-cli)
+is a public mirror, synced on every release. Issues are welcome there; pull requests are read and
+ported into the monorepo by hand, so they are not merged in the mirror itself.
+
+To build and test a checkout of the mirror: `npm install && npm test` with npm 11 or later. npm 10
+fails to resolve vitest 4's peer dependencies (`Cannot read properties of null (reading 'edgesOut')`);
+on npm 10 use `npm install --legacy-peer-deps`. Installing the published package is not affected.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
