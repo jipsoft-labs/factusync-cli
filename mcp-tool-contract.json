@@ -1,0 +1,40 @@
+{
+  "$comment": "What the factusync CLI relies on from the FactuSync MCP server. Checked on both sides: apps/factusync/backend/src/mcp/mcp-cli-contract.spec.ts (the backend tools still look like this) and packages/factusync-cli/test/tool-contract.spec.ts (the CLI still calls exactly this). Not published.",
+  "tools": {
+    "factusync_context": {
+      "scope": "documents:read",
+      "inputKeys": [],
+      "requiredKeys": []
+    },
+    "factusync_lookup_id": {
+      "scope": "validation:read",
+      "inputKeys": ["identification"],
+      "requiredKeys": ["identification"]
+    },
+    "factusync_list_documents": {
+      "scope": "documents:read",
+      "inputKeys": ["documentTypeCode", "issuedFrom", "issuedTo", "limit", "offset", "recipientIdentification", "status"],
+      "requiredKeys": []
+    },
+    "factusync_get_document": {
+      "scope": "documents:read",
+      "inputKeys": ["id"],
+      "requiredKeys": ["id"]
+    },
+    "factusync_create_invoice": {
+      "scope": "documents:write",
+      "inputKeys": ["additionalInfo", "buyer", "emissionPoint", "establishment", "externalReference", "lines", "payment"],
+      "requiredKeys": ["buyer", "externalReference", "lines"]
+    },
+    "factusync_emit_document": {
+      "scope": "documents:emit",
+      "inputKeys": ["id"],
+      "requiredKeys": ["id"]
+    },
+    "factusync_get_ride": {
+      "scope": "documents:ride",
+      "inputKeys": ["id"],
+      "requiredKeys": ["id"]
+    }
+  }
+}
