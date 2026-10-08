@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, stat } from 'node:fs/promises';
+import { mkdtemp, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
@@ -6,6 +6,9 @@ import { runCli } from './cli-harness.js';
 import { FAKE_PDF, FakeFactusyncServer, FULL_KEY, RIDE_ONLY_KEY, structured } from './fake-factusync-server.js';
 
 const DOCUMENT_ID = '0b9f6f5e-2d53-4b8e-9d0e-3f1f5d2c7a10';
+const ACCESS_KEY = '2409202601179001234500120010010000001231234567811';
+const NOW = new Date('2026-10-07T15:30:12.345Z');
+const at = (date: Date) => () => date;
 
 let fake: FakeFactusyncServer;
 let env: Record<string, string>;
@@ -186,5 +189,71 @@ describe('factusync ride', () => {
 
     expect(result.code).toBe(0);
     expect(await readFile(out)).toEqual(body);
+  });
+
+  describe('--out/--xml naming a directory', () => {
+    it('--out <existing dir> writes ride-<accessKey>-<UTC timestamp>.pdf inside it', async () => {
+      const result = await runCli(['ride', DOCUMENT_ID, '--out', dir], env, { now: at(NOW) });
+
+      const expected = join(dir, `ride-${ACCESS_KEY}-20261007T153012Z.pdf`);
+      expect(result.code).toBe(0);
+      expect(await readFile(expected)).toEqual(FAKE_PDF);
+      expect(result.json()).toMatchObject({ rideFile: expected });
+    });
+
+    it('a trailing / makes it a directory too, and --xml gets the same stem with .xml', async () => {
+      const result = await runCli(['ride', DOCUMENT_ID, '--out', `${dir}/`, '--xml', `${dir}/`], env, { now: at(NOW) });
+
+      expect(result.code).toBe(0);
+      expect((await readdir(dir)).sort()).toEqual([
+        `ride-${ACCESS_KEY}-20261007T153012Z.pdf`,
+        `ride-${ACCESS_KEY}-20261007T153012Z.xml`,
+      ]);
+      expect(result.json()).toMatchObject({
+        rideFile: join(dir, `ride-${ACCESS_KEY}-20261007T153012Z.pdf`),
+        xmlFile: join(dir, `ride-${ACCESS_KEY}-20261007T153012Z.xml`),
+      });
+    });
+
+    it('two downloads at different times keep both files', async () => {
+      const first = await runCli(['ride', DOCUMENT_ID, '--out', dir], env, { now: at(NOW) });
+      const second = await runCli(['ride', DOCUMENT_ID, '--out', dir], env, { now: at(new Date('2026-10-07T15:30:13Z')) });
+
+      expect([first.code, second.code]).toEqual([0, 0]);
+      expect(await readdir(dir)).toHaveLength(2);
+    });
+
+    it('never overwrites: a generated name that already exists fails and leaves the file alone', async () => {
+      const taken = join(dir, `ride-${ACCESS_KEY}-20261007T153012Z.pdf`);
+      await writeFile(taken, 'kept');
+
+      const result = await runCli(['ride', DOCUMENT_ID, '--out', dir], env, { now: at(NOW) });
+
+      expect(result.code).toBe(2);
+      expect(result.error().code).toBe('OUTPUT_FILE_EXISTS');
+      expect(await readFile(taken, 'utf8')).toBe('kept');
+    });
+
+    it('without an accessKey the name uses the documentId, made safe for a file name', async () => {
+      fake.respond('factusync_get_ride', () =>
+        structured({ documentId: '../../etc/x', rideUrl: `${fake.baseUrl}/documents/${DOCUMENT_ID}/ride` }),
+      );
+
+      const result = await runCli(['ride', DOCUMENT_ID, '--out', dir], env, { now: at(NOW) });
+
+      expect(result.code).toBe(0);
+      expect(await readdir(dir)).toEqual(['ride-.._.._etc_x-20261007T153012Z.pdf']);
+    });
+
+    it('--out <file> keeps writing exactly that path, replacing it', async () => {
+      const out = join(dir, 'chosen.pdf');
+      await writeFile(out, 'old');
+
+      const result = await runCli(['ride', DOCUMENT_ID, '--out', out], env, { now: at(NOW) });
+
+      expect(result.code).toBe(0);
+      expect(await readFile(out)).toEqual(FAKE_PDF);
+      expect(await readdir(dir)).toEqual(['chosen.pdf']);
+    });
   });
 });

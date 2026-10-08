@@ -13,7 +13,7 @@ export interface CliResult {
 export async function runCli(
   argv: string[],
   env: CliEnv,
-  options: { stdin?: string; timeoutMs?: number; fetch?: typeof fetch; maxRideBytes?: number } = {},
+  options: { stdin?: string; timeoutMs?: number; fetch?: typeof fetch; maxRideBytes?: number; now?: () => Date } = {},
 ): Promise<CliResult> {
   let stdout = '';
   let stderr = '';
@@ -28,6 +28,7 @@ export async function runCli(
     fetch: options.fetch ?? globalThis.fetch,
     ...(options.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
     ...(options.maxRideBytes !== undefined ? { maxRideBytes: options.maxRideBytes } : {}),
+    ...(options.now !== undefined ? { now: options.now } : {}),
   });
   return {
     code,

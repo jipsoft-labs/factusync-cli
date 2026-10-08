@@ -118,12 +118,19 @@ export const COMMANDS: readonly CommandSpec[] = [
   {
     words: ['ride'],
     tool: 'factusync_get_ride',
-    usage: 'factusync ride <id> [--out <file.pdf>] [--xml <file.xml>]',
+    usage: 'factusync ride <id> [--out <file.pdf|dir/>] [--xml <file.xml|dir/>]',
     summary: 'For an AUTHORIZED document: the RIDE (PDF) URL, and the authorized XML when the key may read documents.',
     positionals: [{ name: 'id', argument: 'id' }],
     flags: {
-      out: { type: 'string', description: 'Download the RIDE PDF to this file (sent with the same API key)' },
-      xml: { type: 'string', description: 'Write the authorized XML to this file (needs documents:read too)' },
+      out: {
+        type: 'string',
+        description:
+          'Download the RIDE PDF to this file, replacing it, or into this directory under a new timestamped name that never replaces a file (sent with the same API key)',
+      },
+      xml: {
+        type: 'string',
+        description: 'Write the authorized XML to this file, or into this directory under a new timestamped name (needs documents:read too)',
+      },
     },
   },
   {

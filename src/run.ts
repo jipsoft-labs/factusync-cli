@@ -1,4 +1,5 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, stat, writeFile } from 'node:fs/promises';
+import { join, sep } from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { commandForTool, findCommand, type CommandSpec, type McpToolName } from './commands.js';
 import { readConfig, type CliConfig } from './config.js';
@@ -17,6 +18,8 @@ export interface CliIo {
   timeoutMs?: number;
   /** Largest RIDE PDF accepted. Tests shorten it; the CLI uses `MAX_RIDE_BYTES`. */
   maxRideBytes?: number;
+  /** Clock for generated output file names. Tests pin it; the CLI uses the system clock. */
+  now?: () => Date;
 }
 
 export type CliEnv = Readonly<Record<string, string | undefined>>;
@@ -225,24 +228,68 @@ async function saveRide(
     }
   }
 
+  const stem = outputStem(result, (io.now ?? (() => new Date()))());
+  const pdfTarget = typeof out === 'string' ? await outputTarget(out, stem, 'pdf') : undefined;
+  const xmlTarget = typeof xmlPath === 'string' ? await outputTarget(xmlPath, stem, 'xml') : undefined;
+
   let pdf: Uint8Array | undefined;
-  if (typeof out === 'string') pdf = await downloadRide(result['rideUrl'], config, io);
+  if (pdfTarget) pdf = await downloadRide(result['rideUrl'], config, io);
 
   const saved: Record<string, unknown> = { ...result };
-  try {
-    if (pdf && typeof out === 'string') {
-      await writeFile(out, pdf);
-      saved['rideFile'] = out;
-    }
-    if (typeof xmlPath === 'string') {
-      await writeFile(xmlPath, result['xml'] as string, 'utf8');
-      delete saved['xml'];
-      saved['xmlFile'] = xmlPath;
-    }
-  } catch (error) {
-    throw new CliFailure(EXIT_USAGE, 'OUTPUT_FILE_NOT_WRITABLE', `Cannot write the output file: ${(error as Error).message}`);
+  if (pdf && pdfTarget) {
+    await writeOutput(pdfTarget, pdf);
+    saved['rideFile'] = pdfTarget.path;
+  }
+  if (xmlTarget) {
+    await writeOutput(xmlTarget, result['xml'] as string);
+    delete saved['xml'];
+    saved['xmlFile'] = xmlTarget.path;
   }
   return saved;
+}
+
+interface OutputTarget {
+  path: string;
+  /** A generated name: created, never replaced. A path the user typed is written as before. */
+  exclusive: boolean;
+}
+
+/**
+ * `--out`/`--xml` naming a directory (an existing one, or any path ending in a separator) get a
+ * generated file name inside it, so repeated downloads never replace each other. A file path is
+ * the integrator's exact choice and is written as given.
+ */
+async function outputTarget(value: string, stem: string, extension: 'pdf' | 'xml'): Promise<OutputTarget> {
+  const isDirectory =
+    value.endsWith('/') ||
+    value.endsWith(sep) ||
+    (await stat(value).then(
+      (stats) => stats.isDirectory(),
+      () => false,
+    ));
+  return isDirectory ? { path: join(value, `${stem}.${extension}`), exclusive: true } : { path: value, exclusive: false };
+}
+
+/**
+ * `ride-<accessKey or documentId>-<UTC time>`, e.g. `ride-2409…811-20261007T153012Z`. Both come
+ * from the server, so anything outside `[A-Za-z0-9._-]` becomes `_`: no separator can climb out of
+ * the directory the user chose.
+ */
+function outputStem(result: Record<string, unknown>, now: Date): string {
+  const id = [result['accessKey'], result['documentId']].find((value) => typeof value === 'string' && value !== '') as string | undefined;
+  const timestamp = now.toISOString().replace(/\.\d{3}Z$/, 'Z').replace(/[-:]/g, '');
+  return `ride-${(id ?? 'document').replace(/[^A-Za-z0-9._-]/g, '_')}-${timestamp}`;
+}
+
+async function writeOutput(target: OutputTarget, data: Uint8Array | string): Promise<void> {
+  try {
+    await writeFile(target.path, data, target.exclusive ? { flag: 'wx' } : {});
+  } catch (error) {
+    if (target.exclusive && (error as { code?: string }).code === 'EEXIST') {
+      throw new CliFailure(EXIT_USAGE, 'OUTPUT_FILE_EXISTS', `${target.path} already exists; it was not replaced. Run it again in a moment.`);
+    }
+    throw new CliFailure(EXIT_USAGE, 'OUTPUT_FILE_NOT_WRITABLE', `Cannot write the output file: ${(error as Error).message}`);
+  }
 }
 
 async function downloadRide(rideUrl: unknown, config: CliConfig, io: CliIo): Promise<Uint8Array> {

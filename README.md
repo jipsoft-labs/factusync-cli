@@ -163,7 +163,7 @@ taxableBase, taxAmount }], totals, payments }`.
 Only after the user approved the draft. Prints `{ documentId, jobId, status, next }`; then follow the
 document with `documents get`. Only `DRAFT` documents can be emitted.
 
-### `factusync ride <id> [--out file.pdf] [--xml file.xml]`
+### `factusync ride <id> [--out file.pdf|dir/] [--xml file.xml|dir/]`
 
 Only for `AUTHORIZED` documents. Prints `{ documentId, status, number, accessKey, rideUrl, rideDownload,
 xml?, xmlTruncated? }`.
@@ -175,6 +175,11 @@ xml?, xmlTruncated? }`.
 - `--xml file.xml` writes the authorized XML, adds `xmlFile` and leaves `xml` out of the output. The
   XML is only returned when the key also has `documents:read` (otherwise `XML_NOT_AVAILABLE`); an XML
   the server truncated is not written (`XML_TRUNCATED`).
+- `--out` and `--xml` take a file or a directory. A file path is written exactly as given, replacing
+  what is there. A directory (one that exists, or any path ending in `/`) gets a generated name,
+  `ride-<accessKey>-<UTC time>.pdf` / `.xml` (for example `ride-2409…811-20261007T153012Z.pdf`; the
+  `documentId` when there is no access key), created only if it does not exist yet: an existing
+  file is never replaced (`OUTPUT_FILE_EXISTS`). `rideFile` / `xmlFile` give the path written.
 - If any check fails, no file is written.
 
 ### `factusync tools`
@@ -194,7 +199,7 @@ command for each.
 |---|---|---|
 | 0 | OK | |
 | 1 | The tool answered with an error | the API code, `TOOL_ERROR`, `TOOL_NOT_AVAILABLE`, `INVALID_INPUT`, `MCP_ERROR`, `XML_NOT_AVAILABLE`, `XML_TRUNCATED`, `RIDE_URL_UNTRUSTED`, `RIDE_DOWNLOAD_FAILED`, `RIDE_NOT_PDF`, `RIDE_TOO_LARGE` |
-| 2 | Usage error: nothing was sent | `USAGE`, `CONFIRMATION_REQUIRED`, `INVALID_INPUT_FILE`, `OUTPUT_FILE_NOT_WRITABLE` |
+| 2 | Usage error: nothing was sent | `USAGE`, `CONFIRMATION_REQUIRED`, `INVALID_INPUT_FILE`, `OUTPUT_FILE_NOT_WRITABLE`, `OUTPUT_FILE_EXISTS` |
 | 3 | Authentication or network | `MISSING_API_KEY`, `UNAUTHORIZED`, `FORBIDDEN`, `HTTP_ERROR`, `NETWORK_ERROR`, `TIMEOUT`, `REDIRECT_REFUSED`, `RIDE_REDIRECT_REFUSED` |
 
 A missing `FACTUSYNC_API_KEY` fails with exit 3 before any network request.
