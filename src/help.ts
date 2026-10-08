@@ -4,7 +4,7 @@ import { DEFAULT_MCP_URL } from './config.js';
 const COMMON = [
   'Environment:',
   '  FACTUSYNC_API_KEY   Required. Your FactuSync API key. Never accepted as a flag.',
-  `  FACTUSYNC_MCP_URL   Optional. Default ${DEFAULT_MCP_URL}`,
+  `  FACTUSYNC_MCP_URL   Optional. Default ${DEFAULT_MCP_URL}. https only (http for localhost).`,
   '',
   'Output: the tool result as JSON on stdout (--pretty indents it).',
   'Errors: JSON {code, message, details?} on stderr.',

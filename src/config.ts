@@ -8,6 +8,14 @@ export interface CliConfig {
 }
 
 /**
+ * Plain http would carry the API key in clear text: it is accepted only for a server on this
+ * machine (a local FactuSync, tests). `URL` already normalizes the host, so `127.1` is `127.0.0.1`.
+ */
+function isLoopback(hostname: string): boolean {
+  return hostname === 'localhost' || hostname === '[::1]' || /^127\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname);
+}
+
+/**
  * Configuration comes from the environment only. The key in particular is never a flag: a flag
  * lands in shell history and in the process list, where other users on the machine can read it.
  */
@@ -19,8 +27,8 @@ export function readConfig(env: Readonly<Record<string, string | undefined>>): C
   } catch {
     throw usageFailure(`FACTUSYNC_MCP_URL is not a valid URL: ${rawUrl}`);
   }
-  if (mcpUrl.protocol !== 'https:' && mcpUrl.protocol !== 'http:') {
-    throw usageFailure(`FACTUSYNC_MCP_URL must be an http(s) URL: ${rawUrl}`);
+  if (mcpUrl.protocol !== 'https:' && !(mcpUrl.protocol === 'http:' && isLoopback(mcpUrl.hostname))) {
+    throw usageFailure(`FACTUSYNC_MCP_URL must be an https URL (http only for localhost): ${rawUrl}`);
   }
 
   const apiKey = env['FACTUSYNC_API_KEY']?.trim();

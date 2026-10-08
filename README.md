@@ -30,11 +30,12 @@ Requires Node.js 22 or newer.
 | Variable | Required | Meaning |
 |---|---|---|
 | `FACTUSYNC_API_KEY` | yes | A FactuSync API key. Sent as the `X-API-Key` header. |
-| `FACTUSYNC_MCP_URL` | no | The MCP endpoint. Default `https://factusync-api.jipsoft.com/mcp`. |
+| `FACTUSYNC_MCP_URL` | no | The MCP endpoint. Default `https://factusync-api.jipsoft.com/mcp`. Must be `https:`; `http:` is accepted only for a loopback host (`localhost`, `127.x.x.x`, `[::1]`). |
 
 The key is **never** accepted as a flag (`--api-key`, `--key` are rejected as unknown options), so it
 does not end up in shell history or in the process list. Never print the key or paste it into a
-conversation.
+conversation. Redirects are never followed on a request that carries the key (`REDIRECT_REFUSED`,
+`RIDE_REDIRECT_REFUSED`): set `FACTUSYNC_MCP_URL` to the final URL of the endpoint.
 
 A key's **SRI environment** (testing or production) is fixed when the key is created: every document
 created through it goes to that environment. `factusync context` tells you which one it is.
@@ -193,7 +194,7 @@ command for each.
 | 0 | OK | |
 | 1 | The tool answered with an error | the API code, `TOOL_ERROR`, `TOOL_NOT_AVAILABLE`, `INVALID_INPUT`, `MCP_ERROR`, `XML_NOT_AVAILABLE`, `XML_TRUNCATED`, `RIDE_URL_UNTRUSTED`, `RIDE_DOWNLOAD_FAILED` |
 | 2 | Usage error: nothing was sent | `USAGE`, `CONFIRMATION_REQUIRED`, `INVALID_INPUT_FILE`, `OUTPUT_FILE_NOT_WRITABLE` |
-| 3 | Authentication or network | `MISSING_API_KEY`, `UNAUTHORIZED`, `FORBIDDEN`, `HTTP_ERROR`, `NETWORK_ERROR`, `TIMEOUT` |
+| 3 | Authentication or network | `MISSING_API_KEY`, `UNAUTHORIZED`, `FORBIDDEN`, `HTTP_ERROR`, `NETWORK_ERROR`, `TIMEOUT`, `REDIRECT_REFUSED`, `RIDE_REDIRECT_REFUSED` |
 
 A missing `FACTUSYNC_API_KEY` fails with exit 3 before any network request.
 
