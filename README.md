@@ -217,6 +217,19 @@ factusync documents get "$DOCUMENT_ID"            # until AUTHORIZED or REJECTED
 factusync ride "$DOCUMENT_ID" --out invoice.pdf --xml invoice.xml
 ```
 
+## Security
+
+What the CLI guarantees about the API key and the files it writes:
+
+- The key is read from the environment only, sent as `X-API-Key` only to `FACTUSYNC_MCP_URL`'s origin,
+  and never over plain `http:` except to a loopback host.
+- No request that carries the key follows a redirect (`REDIRECT_REFUSED`, `RIDE_REDIRECT_REFUSED`).
+- A RIDE download must be `application/pdf` and at most 20 MiB; a directory `--out`/`--xml` never
+  replaces an existing file.
+
+0.1.3 added the https-only rule, the redirect refusal, the RIDE checks and the directory naming, and moved to `@modelcontextprotocol/sdk` 1.32.1, after an external
+review of 0.1.2 ([issue #1](https://github.com/jipsoft-labs/factusync-cli/issues/1)).
+
 ## Source and issues
 
 This package is developed inside JipSoft's private monorepo, next to the FactuSync server it talks
