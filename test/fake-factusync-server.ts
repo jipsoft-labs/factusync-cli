@@ -60,6 +60,13 @@ const echoHandler =
   (args) =>
     structured({ tool, args });
 
+/** How `GET /documents/:id/ride` answers; `chunked` streams the body without a Content-Length. */
+export interface RideResponse {
+  contentType?: string;
+  body?: Buffer;
+  chunked?: boolean;
+}
+
 /** Which endpoint answers with a redirect instead of its normal response. */
 export type RedirectedRoute = 'ride' | 'mcp';
 
@@ -68,6 +75,7 @@ export class FakeFactusyncServer {
   readonly calls: RecordedCall[] = [];
   private handlers = new Map<string, FakeToolHandler>();
   private redirects = new Map<RedirectedRoute, { status: number; location: string }>();
+  private rideResponse: RideResponse = {};
   private readonly keys = new Map<string, readonly string[]>([
     [FULL_KEY, ALL_SCOPES],
     [RIDE_ONLY_KEY, ['documents:ride']],
@@ -106,11 +114,17 @@ export class FakeFactusyncServer {
     this.redirects.set(route, { status, location });
   }
 
+  /** Replace the RIDE download's Content-Type and/or body for the rest of the test. */
+  serveRide(response: RideResponse): void {
+    this.rideResponse = response;
+  }
+
   reset(): void {
     this.requests.length = 0;
     this.calls.length = 0;
     this.handlers = new Map();
     this.redirects = new Map();
+    this.rideResponse = {};
   }
 
   async close(): Promise<void> {
@@ -134,7 +148,14 @@ export class FakeFactusyncServer {
         res.writeHead(401, { 'content-type': 'application/json' }).end('{"code":"UNAUTHORIZED"}');
         return;
       }
-      res.writeHead(200, { 'content-type': 'application/pdf' }).end(FAKE_PDF);
+      const { contentType = 'application/pdf', body = FAKE_PDF, chunked = false } = this.rideResponse;
+      if (!chunked) {
+        res.writeHead(200, { 'content-type': contentType }).end(body);
+        return;
+      }
+      res.writeHead(200, { 'content-type': contentType });
+      for (let offset = 0; offset < body.length; offset += 1024) res.write(body.subarray(offset, offset + 1024));
+      res.end();
       return;
     }
 

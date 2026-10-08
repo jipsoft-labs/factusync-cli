@@ -15,12 +15,17 @@ export interface CliIo {
   fetch: typeof fetch;
   /** Per-request timeout for MCP calls. Tests shorten it; the CLI uses the SDK default. */
   timeoutMs?: number;
+  /** Largest RIDE PDF accepted. Tests shorten it; the CLI uses `MAX_RIDE_BYTES`. */
+  maxRideBytes?: number;
 }
 
 export type CliEnv = Readonly<Record<string, string | undefined>>;
 
 /** Same default as the SDK's MCP requests, for the RIDE download. */
 const DEFAULT_TIMEOUT_MS = 60_000;
+
+/** A RIDE is a one- or two-page PDF of tens of KiB: anything near this is not one. */
+export const MAX_RIDE_BYTES = 20 * 1024 * 1024;
 
 /** Runs one CLI invocation and returns its exit code. Never throws. */
 export async function run(argv: readonly string[], env: CliEnv, io: CliIo): Promise<number> {
@@ -285,5 +290,55 @@ async function downloadRide(rideUrl: unknown, config: CliConfig, io: CliIo): Pro
       status: response.status,
     });
   }
-  return new Uint8Array(await response.arrayBuffer());
+
+  const contentType = response.headers.get('content-type') ?? '';
+  if (contentType.split(';')[0]!.trim().toLowerCase() !== 'application/pdf') {
+    await response.body?.cancel().catch(() => undefined);
+    throw new CliFailure(EXIT_TOOL_ERROR, 'RIDE_NOT_PDF', `The RIDE download is not a PDF (Content-Type '${contentType}'); nothing was written.`);
+  }
+  return readCapped(response, io.maxRideBytes ?? MAX_RIDE_BYTES);
+}
+
+/**
+ * The body, refused as soon as it passes `maxBytes`: up front when `Content-Length` says so, and
+ * while streaming otherwise, so a server that lies about it or streams without one cannot fill
+ * the memory or the disk.
+ */
+async function readCapped(response: Response, maxBytes: number): Promise<Uint8Array> {
+  const tooLarge = () =>
+    new CliFailure(EXIT_TOOL_ERROR, 'RIDE_TOO_LARGE', `The RIDE download is larger than ${maxBytes} bytes; nothing was written.`, {
+      maxBytes,
+    });
+  const declared = Number(response.headers.get('content-length'));
+  if (Number.isFinite(declared) && declared > maxBytes) {
+    await response.body?.cancel().catch(() => undefined);
+    throw tooLarge();
+  }
+  if (!response.body) return new Uint8Array();
+
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) {
+        await reader.cancel().catch(() => undefined);
+        throw tooLarge();
+      }
+      chunks.push(value);
+    }
+  } catch (error) {
+    throw networkFailure(error);
+  }
+
+  const pdf = new Uint8Array(total);
+  let offset = 0;
+  for (const chunk of chunks) {
+    pdf.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  return pdf;
 }

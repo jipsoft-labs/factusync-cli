@@ -170,7 +170,8 @@ xml?, xmlTruncated? }`.
 
 - `--out file.pdf` downloads the PDF from `rideUrl` with the same key and adds `rideFile` to the output.
   The key is only sent when `rideUrl` is on the same origin as `FACTUSYNC_MCP_URL`
-  (otherwise `RIDE_URL_UNTRUSTED`).
+  (otherwise `RIDE_URL_UNTRUSTED`). The response must be `application/pdf` (otherwise `RIDE_NOT_PDF`)
+  and at most 20 MiB (otherwise `RIDE_TOO_LARGE`, checked while it streams).
 - `--xml file.xml` writes the authorized XML, adds `xmlFile` and leaves `xml` out of the output. The
   XML is only returned when the key also has `documents:read` (otherwise `XML_NOT_AVAILABLE`); an XML
   the server truncated is not written (`XML_TRUNCATED`).
@@ -192,7 +193,7 @@ command for each.
 | Exit | Meaning | Codes |
 |---|---|---|
 | 0 | OK | |
-| 1 | The tool answered with an error | the API code, `TOOL_ERROR`, `TOOL_NOT_AVAILABLE`, `INVALID_INPUT`, `MCP_ERROR`, `XML_NOT_AVAILABLE`, `XML_TRUNCATED`, `RIDE_URL_UNTRUSTED`, `RIDE_DOWNLOAD_FAILED` |
+| 1 | The tool answered with an error | the API code, `TOOL_ERROR`, `TOOL_NOT_AVAILABLE`, `INVALID_INPUT`, `MCP_ERROR`, `XML_NOT_AVAILABLE`, `XML_TRUNCATED`, `RIDE_URL_UNTRUSTED`, `RIDE_DOWNLOAD_FAILED`, `RIDE_NOT_PDF`, `RIDE_TOO_LARGE` |
 | 2 | Usage error: nothing was sent | `USAGE`, `CONFIRMATION_REQUIRED`, `INVALID_INPUT_FILE`, `OUTPUT_FILE_NOT_WRITABLE` |
 | 3 | Authentication or network | `MISSING_API_KEY`, `UNAUTHORIZED`, `FORBIDDEN`, `HTTP_ERROR`, `NETWORK_ERROR`, `TIMEOUT`, `REDIRECT_REFUSED`, `RIDE_REDIRECT_REFUSED` |
 

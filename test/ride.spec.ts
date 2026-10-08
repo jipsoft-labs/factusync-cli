@@ -141,4 +141,50 @@ describe('factusync ride', () => {
       await elsewhere.close();
     }
   });
+
+  it.each([['text/html; charset=utf-8'], ['application/json']])('refuses a RIDE download that is not a PDF (%s) and writes nothing', async (contentType) => {
+    fake.serveRide({ contentType, body: Buffer.from('<html>login</html>') });
+    const out = join(dir, 'ride.pdf');
+
+    const result = await runCli(['ride', DOCUMENT_ID, '--out', out], env);
+
+    expect(result.code).toBe(1);
+    expect(result.error().code).toBe('RIDE_NOT_PDF');
+    expect(await exists(out)).toBe(false);
+  });
+
+  it('accepts a PDF Content-Type with parameters', async () => {
+    fake.serveRide({ contentType: 'application/pdf; charset=binary' });
+    const out = join(dir, 'ride.pdf');
+
+    const result = await runCli(['ride', DOCUMENT_ID, '--out', out], env);
+
+    expect(result.code).toBe(0);
+    expect(await readFile(out)).toEqual(FAKE_PDF);
+  });
+
+  it.each([
+    ['declares a Content-Length', false],
+    ['streams without a Content-Length', true],
+  ])('refuses a RIDE larger than the cap that %s and writes nothing', async (_label, chunked) => {
+    fake.serveRide({ body: Buffer.alloc(8 * 1024, 0x25), chunked });
+    const out = join(dir, 'ride.pdf');
+
+    const result = await runCli(['ride', DOCUMENT_ID, '--out', out], env, { maxRideBytes: 4 * 1024 });
+
+    expect(result.code).toBe(1);
+    expect(result.error().code).toBe('RIDE_TOO_LARGE');
+    expect(await exists(out)).toBe(false);
+  });
+
+  it('accepts a RIDE exactly at the cap', async () => {
+    const body = Buffer.alloc(4 * 1024, 0x25);
+    fake.serveRide({ body, chunked: true });
+    const out = join(dir, 'ride.pdf');
+
+    const result = await runCli(['ride', DOCUMENT_ID, '--out', out], env, { maxRideBytes: 4 * 1024 });
+
+    expect(result.code).toBe(0);
+    expect(await readFile(out)).toEqual(body);
+  });
 });
