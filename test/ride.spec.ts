@@ -124,4 +124,21 @@ describe('factusync ride', () => {
     expect(result.error().code).toBe('UNAUTHORIZED');
     expect(await exists(out)).toBe(false);
   });
+
+  it('refuses a redirect on the RIDE download: the key never reaches the Location host', async () => {
+    const elsewhere = await FakeFactusyncServer.start();
+    try {
+      fake.redirect('ride', 302, `${elsewhere.baseUrl}/documents/${DOCUMENT_ID}/ride`);
+      const out = join(dir, 'ride.pdf');
+
+      const result = await runCli(['ride', DOCUMENT_ID, '--out', out], env);
+
+      expect(result.code).toBe(3);
+      expect(result.error().code).toBe('RIDE_REDIRECT_REFUSED');
+      expect(elsewhere.requests).toEqual([]);
+      expect(await exists(out)).toBe(false);
+    } finally {
+      await elsewhere.close();
+    }
+  });
 });

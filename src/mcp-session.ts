@@ -26,7 +26,7 @@ export interface McpSession {
 export async function withMcpSession<T>(config: ConnectionConfig, action: (session: McpSession) => Promise<T>): Promise<T> {
   const transport = new StreamableHTTPClientTransport(config.mcpUrl, {
     requestInit: { headers: { 'X-API-Key': config.apiKey } },
-    fetch: config.fetch,
+    fetch: refusingRedirects(config.fetch),
   });
   const client = new Client({ name: 'factusync-cli', version: CLI_VERSION });
   const options = config.timeoutMs !== undefined ? { timeout: config.timeoutMs } : undefined;
@@ -60,6 +60,16 @@ export async function withMcpSession<T>(config: ConnectionConfig, action: (sessi
   } finally {
     await client.close().catch(() => undefined);
   }
+}
+
+/**
+ * Every request here carries `X-API-Key`, and on a cross-origin redirect `fetch` strips
+ * `Authorization` but forwards every other header: following one would hand the key to whatever
+ * host the `Location` names. FactuSync's `POST /mcp` never redirects, so none is ever followed,
+ * whatever `redirect` the SDK passes.
+ */
+function refusingRedirects(fetchFn: typeof fetch): typeof fetch {
+  return (input, init) => fetchFn(input, { ...init, redirect: 'error' });
 }
 
 /** A successful result without `structuredContent`: its first text block, as JSON when it is JSON. */
@@ -149,9 +159,25 @@ export function transportFailure(error: unknown): CliFailure {
   return networkFailure(error);
 }
 
-/** `fetch` rejections: refused, unresolvable, reset or aborted connections. */
+/**
+ * `fetch` with `redirect: 'error'` rejecting on a 3xx. Undici reports it only as a `TypeError`
+ * whose cause says so; nothing more structured exists to test against.
+ */
+export function isRefusedRedirect(error: unknown): boolean {
+  const cause = (error as { cause?: unknown } | null)?.cause;
+  return error instanceof TypeError && cause instanceof Error && /redirect/i.test(cause.message);
+}
+
+/** `fetch` rejections: refused, unresolvable, reset or aborted connections, refused redirects. */
 export function networkFailure(error: unknown): CliFailure {
   if (error instanceof CliFailure) return error;
+  if (isRefusedRedirect(error)) {
+    return new CliFailure(
+      EXIT_AUTH_OR_NETWORK,
+      'REDIRECT_REFUSED',
+      'FactuSync answered with a redirect, which is never followed: the API key goes only to FACTUSYNC_MCP_URL. Check that it is the final URL of the MCP endpoint.',
+    );
+  }
   if (error instanceof Error && (error.name === 'TimeoutError' || error.name === 'AbortError')) {
     return new CliFailure(EXIT_AUTH_OR_NETWORK, 'TIMEOUT', 'FactuSync did not answer in time.');
   }

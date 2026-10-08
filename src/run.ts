@@ -4,7 +4,7 @@ import { commandForTool, findCommand, type CommandSpec, type McpToolName } from 
 import { readConfig, type CliConfig } from './config.js';
 import { CliFailure, EXIT_AUTH_OR_NETWORK, EXIT_OK, EXIT_TOOL_ERROR, EXIT_USAGE, usageFailure } from './failure.js';
 import { commandHelp, rootHelp } from './help.js';
-import { networkFailure, withMcpSession, type McpSession } from './mcp-session.js';
+import { isRefusedRedirect, networkFailure, withMcpSession, type McpSession } from './mcp-session.js';
 import { CLI_VERSION } from './version.js';
 
 /** Everything the CLI touches outside itself, injectable so tests run it in-process. */
@@ -193,8 +193,9 @@ async function listTools(session: McpSession): Promise<Record<string, unknown>> 
 
 /**
  * `ride --out/--xml`: every check runs before anything is written, so a failure leaves no file.
- * The PDF is fetched with the key only from the MCP endpoint's own origin: the key never goes
- * to a host the user did not configure, whatever URL a response carries.
+ * The PDF is fetched with the key only from the MCP endpoint's own origin, and a redirect is
+ * refused rather than followed: the key never goes to a host the user did not configure, whatever
+ * URL a response or its `Location` carries.
  */
 async function saveRide(
   result: Record<string, unknown>,
@@ -256,11 +257,20 @@ async function downloadRide(rideUrl: unknown, config: CliConfig, io: CliIo): Pro
 
   let response: Response;
   try {
+    // The API serves the PDF itself and never redirects; following one would forward X-API-Key.
     response = await io.fetch(url, {
       headers: { 'X-API-Key': config.apiKey },
+      redirect: 'error',
       signal: AbortSignal.timeout(io.timeoutMs ?? DEFAULT_TIMEOUT_MS),
     });
   } catch (error) {
+    if (isRefusedRedirect(error)) {
+      throw new CliFailure(
+        EXIT_AUTH_OR_NETWORK,
+        'RIDE_REDIRECT_REFUSED',
+        'The RIDE download answered with a redirect, which is never followed: the API key is not sent to another URL.',
+      );
+    }
     throw networkFailure(error);
   }
   if (response.status === 401 || response.status === 403) {

@@ -60,10 +60,14 @@ const echoHandler =
   (args) =>
     structured({ tool, args });
 
+/** Which endpoint answers with a redirect instead of its normal response. */
+export type RedirectedRoute = 'ride' | 'mcp';
+
 export class FakeFactusyncServer {
   readonly requests: RecordedRequest[] = [];
   readonly calls: RecordedCall[] = [];
   private handlers = new Map<string, FakeToolHandler>();
+  private redirects = new Map<RedirectedRoute, { status: number; location: string }>();
   private readonly keys = new Map<string, readonly string[]>([
     [FULL_KEY, ALL_SCOPES],
     [RIDE_ONLY_KEY, ['documents:ride']],
@@ -97,10 +101,16 @@ export class FakeFactusyncServer {
     this.handlers.set(tool, handler);
   }
 
+  /** Make one endpoint answer `status` with `Location: location` for the rest of the test. */
+  redirect(route: RedirectedRoute, status: number, location: string): void {
+    this.redirects.set(route, { status, location });
+  }
+
   reset(): void {
     this.requests.length = 0;
     this.calls.length = 0;
     this.handlers = new Map();
+    this.redirects = new Map();
   }
 
   async close(): Promise<void> {
@@ -114,6 +124,11 @@ export class FakeFactusyncServer {
     const scopes = apiKey !== undefined ? this.keys.get(apiKey) : undefined;
 
     const ride = /^\/documents\/([^/]+)\/ride$/.exec(req.url ?? '');
+    const redirect = this.redirects.get(ride ? 'ride' : 'mcp');
+    if (redirect && (ride || req.url === '/mcp')) {
+      res.writeHead(redirect.status, { location: redirect.location }).end();
+      return;
+    }
     if (req.method === 'GET' && ride) {
       if (!scopes?.includes('documents:ride')) {
         res.writeHead(401, { 'content-type': 'application/json' }).end('{"code":"UNAUTHORIZED"}');

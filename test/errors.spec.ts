@@ -150,4 +150,20 @@ describe('network', () => {
     expect(result.error().code).toBe('USAGE');
     expect(fake.requests).toHaveLength(0);
   });
+
+  it.each([[307], [308]])('refuses an MCP endpoint redirect (%i): the key never reaches the Location host', async (status) => {
+    const elsewhere = await FakeFactusyncServer.start();
+    try {
+      fake.redirect('mcp', status, elsewhere.mcpUrl);
+
+      const result = await runCli(['context'], env);
+
+      expect(result.code).toBe(3);
+      expect(result.error().code).toBe('REDIRECT_REFUSED');
+      expect(result.error().message).toMatch(/FACTUSYNC_MCP_URL/);
+      expect(elsewhere.requests).toEqual([]);
+    } finally {
+      await elsewhere.close();
+    }
+  });
 });
