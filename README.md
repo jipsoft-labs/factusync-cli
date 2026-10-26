@@ -25,6 +25,21 @@ node packages/factusync-cli/dist/cli.js context
 
 Requires Node.js 22 or newer.
 
+## Agent skill
+
+[`skills/factusync`](skills/factusync/SKILL.md) teaches an AI agent the FactuSync workflow: which
+channel to use (MCP tools when the client has them, this CLI otherwise), the create → approve → emit
+rule, the invoice input, and what each error means. It also carries the MCP setup for Claude Code,
+Codex, Cursor and VS Code. Install it with the [`skills`](https://github.com/vercel-labs/skills) CLI:
+
+```bash
+npx skills add jipsoft-labs/factusync-cli            # this project; asks which agents
+npx skills add jipsoft-labs/factusync-cli -g         # every project of the current user
+npx skills add jipsoft-labs/factusync-cli -a pi      # one agent: claude-code, codex, cursor, github-copilot, pi…
+```
+
+Run the same command again to update it.
+
 ## Configuration (environment only)
 
 | Variable | Required | Meaning |
