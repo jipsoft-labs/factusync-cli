@@ -1,7 +1,7 @@
 {
   "name": "@jipsoft/factusync-cli",
   "version": "0.1.3",
-  "description": "FactuSync command line for AI agents (Pi) and shell scripts: Ecuadorian SRI e-invoicing through the FactuSync MCP endpoint",
+  "description": "FactuSync command line for shell scripts and AI agents without MCP support: Ecuadorian SRI e-invoicing through the FactuSync MCP endpoint",
   "license": "MIT",
   "keywords": [
     "factusync",

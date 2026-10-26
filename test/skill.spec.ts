@@ -76,6 +76,12 @@ describe('agent skill (skills/factusync)', () => {
     expect(mcpClients).toContain('"Authorization": "Bearer ${env:FACTUSYNC_API_KEY}"');
     // VS Code reads `servers`; a file keyed `mcpServers` is ignored without a word.
     expect(mcpClients).toContain('"servers"');
+    // Pi has built-in MCP since 0.99; its entry carries `exposure: direct` so the tools reach the model.
+    expect(mcpClients).toContain(
+      'pi mcp add factusync --url https://factusync-api.jipsoft.com/mcp --bearer-token-env-var FACTUSYNC_API_KEY',
+    );
+    expect(mcpClients).toContain('"exposure": "direct"');
+    expect(mcpClients).toContain('pi mcp list');
     for (const match of mcpClients.matchAll(/Bearer ([^"\s]+)/g)) {
       expect(match[1], 'a literal key in an example').toMatch(/^(\$|<key>)/);
     }

@@ -8,7 +8,7 @@
 thin client of the FactuSync MCP endpoint: every command calls one MCP tool, with the same input,
 the same API-key scopes, the same error texts and the same idempotency as the MCP tools.
 
-It is written to be used by an AI agent (for example Pi, which has no MCP support) and by shell
+It is written to be used by an AI agent (for example one without MCP support) and by shell
 scripts. Every command prints JSON.
 
 ## Run it

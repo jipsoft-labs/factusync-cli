@@ -82,9 +82,43 @@ the key once and stores it as a secret:
 }
 ```
 
-## Pi and other agents without MCP
+## Pi
 
-Use the CLI, which calls the same server:
+Pi has had built-in MCP since 0.99. `pi mcp add` writes the entry to `~/.pi/agent/mcp.json` (or use
+`.pi/mcp.json` in a project, which Pi reads only after the project is trusted). Pi expands `${VAR}`
+in headers, so the file holds no key. `--exposure direct` declares the tools to the model like Pi's
+own; the default, `codemode`, only reaches them from codemode scripts.
+
+```bash
+pi mcp add factusync --url https://factusync-api.jipsoft.com/mcp --bearer-token-env-var FACTUSYNC_API_KEY --exposure direct
+```
+
+Which writes:
+
+```json
+{
+  "mcpServers": {
+    "factusync": {
+      "url": "https://factusync-api.jipsoft.com/mcp",
+      "headers": {
+        "Authorization": "Bearer ${FACTUSYNC_API_KEY}"
+      },
+      "exposure": "direct"
+    }
+  }
+}
+```
+
+Check it with `pi mcp list`, which connects and prints the tools the key's scopes allow. Inside a
+session, `/mcp` shows the status and `/reload` applies config changes.
+
+Pi does not ask for approval before each tool call, and it only uses the `destructiveHint` on
+`factusync_emit_document` in permission extensions. So show the user the draft preview and wait for
+their approval before emitting, or have them install a permission extension.
+
+## Agents without MCP
+
+Scripts, Pi before 0.99 and any agent without MCP support use the CLI, which calls the same server:
 
 ```bash
 npm install -g @jipsoft/factusync-cli   # or: npx -y @jipsoft/factusync-cli <command>
